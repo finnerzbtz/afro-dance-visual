@@ -25,3 +25,17 @@ body {
     text-wrap: balance;
   }
 }
+
+body:-webkit-full-screen,
+body:-moz-full-screen,
+body:-ms-fullscreen,
+body:fullscreen {
+  overflow: hidden;
+}
+
+body:-webkit-full-screen > *:not(.p5Canvas),
+body:-moz-full-screen > *:not(.p5Canvas),
+body:-ms-fullscreen > *:not(.p5Canvas),
+body:fullscreen > *:not(.p5Canvas) {
+  display: none;
+}
