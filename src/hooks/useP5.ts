@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import p5 from 'p5';
 
-export const useP5 = (): typeof p5 | null => {
-  const [p5Instance, setP5Instance] = useState<typeof p5 | null>(null);
+export const useP5 = () => {
+  const [p5, setP5] = useState<any>(null);
 
   useEffect(() => {
     import('p5').then((p5Module) => {
@@ -11,10 +10,10 @@ export const useP5 = (): typeof p5 | null => {
       }
       
       import('p5/lib/addons/p5.sound').then(() => {
-        setP5Instance(() => p5Module.default);
+        setP5(() => p5Module.default);
       });
     });
   }, []);
 
-  return p5Instance;
+  return p5;
 };

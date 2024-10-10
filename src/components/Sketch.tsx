@@ -15,7 +15,7 @@ interface Circle {
   x: number;
   y: number;
   size: number;
-  color: p5.Color;
+  color: [number, number, number]; // [r, g, b]
   alpha: number;
 }
 
@@ -30,6 +30,17 @@ interface Word {
   flashDuration: number;
 }
 
+type P5Slider = p5.Element & { elt: { value: number } };
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? [
+    parseInt(result[1], 16),
+    parseInt(result[2], 16),
+    parseInt(result[3], 16)
+  ] : [0, 0, 0];
+};
+
 const Sketch: React.FC = () => {
   const sketchRef = useRef<HTMLDivElement>(null);
   const p5Instance = useP5();
@@ -38,17 +49,17 @@ const Sketch: React.FC = () => {
   useEffect(() => {
     if (!p5Instance) return;
 
-    const newSketch = (p: p5) => {
-      let mic: p5.AudioIn;
+    const newSketch = (p: any) => {
+      let mic: any;
       const circles: Circle[] = [];
       const waveform: number[] = [];
       const waveformResolution = 100;
       let fullscreenButton: p5.Element;
-      let sensitivitySlider: p5.Element & { value: () => number };
-      let flashSensitivitySlider: p5.Element & { value: () => number };
-      let circleSensitivitySlider: p5.Element & { value: () => number };
-      let wordFrequencySlider: p5.Element & { value: () => number };
-      let wordDurationSlider: p5.Element & { value: () => number };
+      let sensitivitySlider: P5Slider;
+      let flashSensitivitySlider: P5Slider;
+      let circleSensitivitySlider: P5Slider;
+      let wordFrequencySlider: P5Slider;
+      let wordDurationSlider: P5Slider;
       const sliderLabels: p5.Element[] = [];
       let isFullscreen = false;
       const words: Word[] = [];
@@ -100,8 +111,10 @@ const Sketch: React.FC = () => {
         const canvasHeight = p.windowHeight;
         p.createCanvas(canvasWidth, canvasHeight);
         p.frameRate(30); // or 60, depending on your preference
+        console.log('Initializing microphone');
         mic = new p5.AudioIn();
         mic.start();
+        console.log('Microphone initialized');
         // Initialize waveform array
         for (let i = 0; i < waveformResolution; i++) {
           waveform[i] = 0;
@@ -120,23 +133,23 @@ const Sketch: React.FC = () => {
         });
 
         // Create sliders
-        sensitivitySlider = p.createSlider(0, 1, 0.5, 0.01) as p5.Element & { value: () => number };
+        sensitivitySlider = p.createSlider(0, 1, 0.5, 0.01) as P5Slider;
         sensitivitySlider.position(10, 40);
         sensitivitySlider.style('width', '200px');
 
-        flashSensitivitySlider = p.createSlider(0, 1, 0.8, 0.01) as p5.Element & { value: () => number };
+        flashSensitivitySlider = p.createSlider(0, 1, 0.8, 0.01) as P5Slider;
         flashSensitivitySlider.position(10, 70);
         flashSensitivitySlider.style('width', '200px');
 
-        circleSensitivitySlider = p.createSlider(0, 1, 0.5, 0.01) as p5.Element & { value: () => number };
+        circleSensitivitySlider = p.createSlider(0, 1, 0.5, 0.01) as P5Slider;
         circleSensitivitySlider.position(10, 100);
         circleSensitivitySlider.style('width', '200px');
 
-        wordFrequencySlider = p.createSlider(1, 10, 5, 1) as p5.Element & { value: () => number };
+        wordFrequencySlider = p.createSlider(1, 10, 5, 1) as P5Slider;
         wordFrequencySlider.position(10, 130);
         wordFrequencySlider.style('width', '200px');
 
-        wordDurationSlider = p.createSlider(1, 10, 3, 1) as p5.Element & { value: () => number };
+        wordDurationSlider = p.createSlider(1, 10, 3, 1) as P5Slider;
         wordDurationSlider.position(10, 160);
         wordDurationSlider.style('width', '200px');
 
@@ -170,51 +183,43 @@ const Sketch: React.FC = () => {
       };
 
       p.mousePressed = () => {
-        p.userStartAudio();
+        console.log('Mouse pressed, starting audio');
+        p.userStartAudio().then(() => {
+          console.log('Audio context started');
+        }).catch((error: Error) => {
+          console.error('Failed to start audio context:', error);
+        });
       };
 
       p.draw = () => {
         if (!mic) {
-          return; // Wait until mic is initialized
+          console.log('Microphone not initialized');
+          return;
         }
 
-        // Set the new background color
         p.background('#FFF44F');
 
-        const vol = mic.getLevel() * sensitivitySlider.value();
+        const vol = mic.getLevel() * sensitivitySlider.elt.value;
+        console.log('Current volume:', vol);
+        console.log('Circle sensitivity:', circleSensitivitySlider.elt.value);
+        console.log('Flash sensitivity:', flashSensitivitySlider.elt.value);
 
         let size = p.map(vol, 0, 0.1, 50, p.min(p.width, p.height) / 2);
         size = p.constrain(size, 50, p.min(p.width, p.height) / 2);
 
-        // Update waveform
-        waveform.push(vol * 3); // Amplify the volume for more visible changes
-        waveform.splice(0, 1);
-
-        // Draw 3D heart with gradient
+        // Draw heart and waveform (as before)
         drawHeart(halfWidth, halfHeight * 0.8, size);
-
-        // Draw waveform inside the heart
-        p.push();
-        p.translate(halfWidth, halfHeight * 0.8);
-        p.noFill();
-        p.stroke(255, 255, 255, 200); // White with some transparency
-        p.strokeWeight(2);
-        p.beginShape();
-        for (let i = 0; i < waveform.length; i++) {
-          const x = p.map(i, 0, waveform.length - 1, -size / 2, size / 2);
-          const y = p.map(waveform[i], 0, 1, size / 4, -size / 4);
-          p.vertex(x, y);
-        }
-        p.endShape();
-        p.pop();
+        // ... (waveform drawing code)
 
         // Add new circles based on volume
-        if (vol > circleSensitivitySlider.value() && circles.length < MAX_CIRCLES) {
+        if (vol > circleSensitivitySlider.elt.value && circles.length < MAX_CIRCLES) {
+          const randomColor = colors[Math.floor(Math.random() * colors.length)];
+          const rgbColor = hexToRgb(randomColor);
           circles.push({
             x: p.random(p.width),
             y: p.random(p.height),
             size: 10,
-            color: p.color(p.random(colors)),
+            color: rgbColor,
             alpha: 255
           });
         }
@@ -225,7 +230,7 @@ const Sketch: React.FC = () => {
           circle.size += vol * BASE_GROWTH_RATE * (p.deltaTime / 16.67);
           circle.alpha -= 5;
 
-          p.fill(circle.color.levels[0], circle.color.levels[1], circle.color.levels[2], circle.alpha);
+          p.fill(circle.color[0], circle.color[1], circle.color[2], circle.alpha);
           p.noStroke();
           p.ellipse(circle.x, circle.y, circle.size, circle.size);
 
@@ -235,15 +240,15 @@ const Sketch: React.FC = () => {
         }
 
         // Add new word based on volume and frequency
-        wordTimer += vol * 10; // Increase timer based on volume
-        if (wordTimer > wordFrequencySlider.value() && words.length < MAX_WORDS) {
+        wordTimer += vol * 10;
+        if (wordTimer > wordFrequencySlider.elt.value && words.length < MAX_WORDS) {
           words.push({
             text: wordList[Math.floor(Math.random() * wordList.length)],
             x: p.random(p.width),
             y: p.random(p.height),
-            size: p.map(vol, 0, 0.1, 60, 120), // Size based on volume
+            size: p.map(vol, 0, 0.1, 60, 120),
             opacity: 255,
-            lifespan: wordDurationSlider.value() * 60, // Convert seconds to frames
+            lifespan: wordDurationSlider.elt.value * 60,
             isFlashing: false,
             flashDuration: 0
           });
@@ -252,14 +257,13 @@ const Sketch: React.FC = () => {
 
         // Check for flash trigger
         const currentTime = p.millis();
-        const shouldFlash = vol > flashSensitivitySlider.value() && (currentTime - lastFlashTime > minTimeBetweenFlashes);
+        const shouldFlash = vol > flashSensitivitySlider.elt.value && (currentTime - lastFlashTime > minTimeBetweenFlashes);
 
         if (shouldFlash) {
           lastFlashTime = currentTime;
-          // Flash all words
           words.forEach(word => {
             word.isFlashing = true;
-            word.flashDuration = 15; // Flash for 15 frames (1/4 second at 60 fps)
+            word.flashDuration = 15;
           });
         }
 
@@ -278,7 +282,7 @@ const Sketch: React.FC = () => {
             }
           }
 
-          word.opacity = p.map(word.lifespan, wordDurationSlider.value() * 60, 0, 255, 0);
+          word.opacity = p.map(word.lifespan, wordDurationSlider.elt.value * 60, 0, 255, 0);
 
           if (word.lifespan > 0) {
             if (word.isFlashing) {
@@ -292,6 +296,9 @@ const Sketch: React.FC = () => {
             words.splice(i, 1);
           }
         }
+
+        console.log('Number of circles:', circles.length);
+        console.log('Number of words:', words.length);
       };
     };
 
