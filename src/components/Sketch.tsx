@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { useP5 } from '../hooks/useP5';
+import p5 from 'p5';
 
 const colors = ['#FF0000', '#FFFF00', '#008000', '#000000']; // Red, Yellow, Green, Black
 const wordList = ['Dance', 'Rhythm', 'Unity', 'Aquinas2024', 'Culture Day'];
@@ -10,55 +11,66 @@ const MAX_CIRCLES = 50;
 const MAX_WORDS = 20;
 const BASE_GROWTH_RATE = 500;
 
-// 4K resolution
-const PROJECTOR_WIDTH = 3840;
-const PROJECTOR_HEIGHT = 2160;
-const ASPECT_RATIO = 16 / 9;
+interface Circle {
+  x: number;
+  y: number;
+  size: number;
+  color: p5.Color;
+  alpha: number;
+}
 
-// Adjust this value to scale down the resolution if needed
-const RESOLUTION_SCALE = 1; // 1 for full 4K, 0.75 for 75% of 4K, etc.
+interface Word {
+  text: string;
+  x: number;
+  y: number;
+  size: number;
+  opacity: number;
+  lifespan: number;
+  isFlashing: boolean;
+  flashDuration: number;
+}
 
-const Sketch = () => {
+const Sketch: React.FC = () => {
   const sketchRef = useRef<HTMLDivElement>(null);
-  const p5 = useP5();
-  const [sketch, setSketch] = useState<any>(null);
+  const p5Instance = useP5();
+  const [sketch, setSketch] = useState<((p: p5) => void) | null>(null);
 
   useEffect(() => {
-    if (!p5) return;
+    if (!p5Instance) return;
 
-    const newSketch = (p: any) => {
-      let mic: any;
-      let circles: any[] = [];
-      let waveform: number[] = [];
-      const waveformResolution = 100; // Number of points in the waveform
-      let fullscreenButton: any;
-      let sensitivitySlider: any;
-      let flashSensitivitySlider: any;
-      let circleSensitivitySlider: any;
-      let wordFrequencySlider: any;
-      let wordDurationSlider: any;
-      let sliderLabels: any[] = [];
+    const newSketch = (p: p5) => {
+      let mic: p5.AudioIn;
+      const circles: Circle[] = [];
+      const waveform: number[] = [];
+      const waveformResolution = 100;
+      let fullscreenButton: p5.Element;
+      let sensitivitySlider: p5.Element;
+      let flashSensitivitySlider: p5.Element;
+      let circleSensitivitySlider: p5.Element;
+      let wordFrequencySlider: p5.Element;
+      let wordDurationSlider: p5.Element;
+      const sliderLabels: p5.Element[] = [];
       let isFullscreen = false;
-      let words: any[] = [];
+      const words: Word[] = [];
       let wordTimer = 0;
-      let customFont: any;
+      let customFont: p5.Font;
       let lastFlashTime = 0;
-      const minTimeBetweenFlashes = 500; // Minimum time between flashes in milliseconds
+      const minTimeBetweenFlashes = 500;
       let halfWidth: number;
       let halfHeight: number;
 
-      const drawHeart = (p: any, x: number, y: number, size: number) => {
+      const drawHeart = (x: number, y: number, size: number) => {
         p.push();
         p.translate(x, y);
 
         // Create a radial gradient with green colors
-        let gradient = p.drawingContext.createRadialGradient(
+        const gradient = p.drawingContext.createRadialGradient(
           0, size/8, 0,
           0, size/8, size*1.2
         );
-        gradient.addColorStop(0, p.color(150, 255, 150));  // Light green at the center
-        gradient.addColorStop(0.7, p.color(0, 200, 0));    // Medium green towards the edge
-        gradient.addColorStop(1, p.color(0, 150, 0));      // Darker green at the edge
+        gradient.addColorStop(0, p.color(150, 255, 150).toString());
+        gradient.addColorStop(0.7, p.color(0, 200, 0).toString());
+        gradient.addColorStop(1, p.color(0, 150, 0).toString());
 
         p.drawingContext.fillStyle = gradient;
 
@@ -80,7 +92,7 @@ const Sketch = () => {
       };
 
       p.preload = () => {
-        customFont = p.loadFont('/Kokoschka.ttf'); // Adjust the path if necessary
+        customFont = p.loadFont('/Kokoschka.ttf');
       };
 
       p.setup = () => {
@@ -131,7 +143,7 @@ const Sketch = () => {
         // Create labels
         const labelTexts = ['Overall Sensitivity', 'Flash Sensitivity', 'Circle Sensitivity', 'Word Frequency', 'Word Duration'];
         labelTexts.forEach((text, index) => {
-          let label = p.createDiv(text);
+          const label = p.createDiv(text);
           label.position(220, 45 + index * 30);
           label.style('font-size', '12px');
           sliderLabels.push(label);
@@ -169,7 +181,7 @@ const Sketch = () => {
         // Set the new background color
         p.background('#FFF44F');
 
-        let vol = mic.getLevel() * sensitivitySlider.value();
+        const vol = mic.getLevel() * sensitivitySlider.value();
 
         let size = p.map(vol, 0, 0.1, 50, p.min(p.width, p.height) / 2);
         size = p.constrain(size, 50, p.min(p.width, p.height) / 2);
@@ -179,7 +191,7 @@ const Sketch = () => {
         waveform.splice(0, 1);
 
         // Draw 3D heart with gradient
-        drawHeart(p, halfWidth, halfHeight * 0.8, size);
+        drawHeart(halfWidth, halfHeight * 0.8, size);
 
         // Draw waveform inside the heart
         p.push();
@@ -189,8 +201,8 @@ const Sketch = () => {
         p.strokeWeight(2);
         p.beginShape();
         for (let i = 0; i < waveform.length; i++) {
-          let x = p.map(i, 0, waveform.length - 1, -size / 2, size / 2);
-          let y = p.map(waveform[i], 0, 1, size / 4, -size / 4);
+          const x = p.map(i, 0, waveform.length - 1, -size / 2, size / 2);
+          const y = p.map(waveform[i], 0, 1, size / 4, -size / 4);
           p.vertex(x, y);
         }
         p.endShape();
@@ -209,7 +221,7 @@ const Sketch = () => {
 
         // Update and display circles
         for (let i = circles.length - 1; i >= 0; i--) {
-          let circle = circles[i];
+          const circle = circles[i];
           circle.size += vol * BASE_GROWTH_RATE * (p.deltaTime / 16.67);
           circle.alpha -= 5;
 
@@ -239,8 +251,8 @@ const Sketch = () => {
         }
 
         // Check for flash trigger
-        let currentTime = p.millis();
-        let shouldFlash = vol > flashSensitivitySlider.value() && (currentTime - lastFlashTime > minTimeBetweenFlashes);
+        const currentTime = p.millis();
+        const shouldFlash = vol > flashSensitivitySlider.value() && (currentTime - lastFlashTime > minTimeBetweenFlashes);
 
         if (shouldFlash) {
           lastFlashTime = currentTime;
@@ -255,7 +267,7 @@ const Sketch = () => {
         p.textFont(customFont);
         p.textAlign(p.CENTER, p.CENTER);
         for (let i = words.length - 1; i >= 0; i--) {
-          let word = words[i];
+          const word = words[i];
           word.lifespan--;
 
           // Update flash state
@@ -284,17 +296,17 @@ const Sketch = () => {
     };
 
     setSketch(() => newSketch);
-  }, [p5]);
+  }, [p5Instance]);
 
   useEffect(() => {
-    if (!p5 || !sketch || !sketchRef.current) return;
+    if (!p5Instance || !sketch || !sketchRef.current) return;
 
-    const myp5 = new p5(sketch, sketchRef.current);
+    const myp5 = new p5Instance(sketch, sketchRef.current);
 
     return () => {
       myp5.remove();
     };
-  }, [p5, sketch]);
+  }, [p5Instance, sketch]);
 
   return <div ref={sketchRef} style={{ width: '100vw', height: '100vh', overflow: 'hidden' }} />;
 };
