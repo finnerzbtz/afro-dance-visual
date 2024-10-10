@@ -44,11 +44,11 @@ const Sketch: React.FC = () => {
       const waveform: number[] = [];
       const waveformResolution = 100;
       let fullscreenButton: p5.Element;
-      let sensitivitySlider: p5.Element;
-      let flashSensitivitySlider: p5.Element;
-      let circleSensitivitySlider: p5.Element;
-      let wordFrequencySlider: p5.Element;
-      let wordDurationSlider: p5.Element;
+      let sensitivitySlider: p5.Element & { value: () => number };
+      let flashSensitivitySlider: p5.Element & { value: () => number };
+      let circleSensitivitySlider: p5.Element & { value: () => number };
+      let wordFrequencySlider: p5.Element & { value: () => number };
+      let wordDurationSlider: p5.Element & { value: () => number };
       const sliderLabels: p5.Element[] = [];
       let isFullscreen = false;
       const words: Word[] = [];
@@ -120,23 +120,23 @@ const Sketch: React.FC = () => {
         });
 
         // Create sliders
-        sensitivitySlider = p.createSlider(0.1, 5, 1, 0.1);
+        sensitivitySlider = p.createSlider(0, 1, 0.5, 0.01) as p5.Element & { value: () => number };
         sensitivitySlider.position(10, 40);
         sensitivitySlider.style('width', '200px');
 
-        flashSensitivitySlider = p.createSlider(0.01, 0.2, 0.05, 0.01);
+        flashSensitivitySlider = p.createSlider(0, 1, 0.8, 0.01) as p5.Element & { value: () => number };
         flashSensitivitySlider.position(10, 70);
         flashSensitivitySlider.style('width', '200px');
 
-        circleSensitivitySlider = p.createSlider(0.01, 0.2, 0.05, 0.01);
+        circleSensitivitySlider = p.createSlider(0, 1, 0.5, 0.01) as p5.Element & { value: () => number };
         circleSensitivitySlider.position(10, 100);
         circleSensitivitySlider.style('width', '200px');
 
-        wordFrequencySlider = p.createSlider(1, 20, 5, 1);
+        wordFrequencySlider = p.createSlider(1, 10, 5, 1) as p5.Element & { value: () => number };
         wordFrequencySlider.position(10, 130);
         wordFrequencySlider.style('width', '200px');
 
-        wordDurationSlider = p.createSlider(0.1, 5, 0.2, 0.1);
+        wordDurationSlider = p.createSlider(1, 10, 3, 1) as p5.Element & { value: () => number };
         wordDurationSlider.position(10, 160);
         wordDurationSlider.style('width', '200px');
 
